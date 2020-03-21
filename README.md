@@ -1,6 +1,6 @@
 # Practice of DSL
 
-DSL を考えてみるメモを記す。
+DSL のメモを記す。
 
 DSL とは Domain Specific Language の略であり日本語では「ドメイン固有言語」と言うらしい。
 
@@ -18,7 +18,7 @@ DSL を考えるにあたって次の様な基本方針を設定する。
 
 ----
 
-## ステップ0. はじめに
+## ステップ0. はじめに、SMT Solver とはなにか。
 
 SMT Solver とは Satisfiable Modulo Theories Solver の略で、一階述語論理式の充足可能性を判定してくれる装置である。
 
