@@ -378,6 +378,9 @@ AST とは Abstract Syntax Tree の略であり、日本語では「抽象構文
 |:-----|:----|
 |Assert(x + y == 24)|Assert(x.Add(y).Eq(IntVal(24)))|
 
+それぞれの AST を図示すると次のようになる。左の木を右の木に変換する。
+
+![fig1](fig1.png)
 
 AST は go/parser パッケージにより取得する。
 
