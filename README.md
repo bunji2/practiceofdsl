@@ -53,9 +53,9 @@ func main() {
 	x := ctx.Const(ctx.Symbol("x"), ctx.IntSort())
 	y := ctx.Const(ctx.Symbol("y"), ctx.IntSort())
 
+	// 制約条件
 	// x + y = 24
 	solver.Assert(x.Add(y).Eq(ctx.Int(24, ctx.IntSort())))
-
 	// x - y = 2
 	solver.Assert(x.Sub(y).Eq(ctx.Int(2, ctx.IntSort())))
 
@@ -106,9 +106,9 @@ func main() {
 	x := c.IntVar("x")
 	y := c.IntVar("y")
 
+	// 制約条件
 	// x + y = 24
 	c.Assert(x.Add(y).Eq(c.IntVal(24)))
-
 	// x - y = 2
 	c.Assert(x.Sub(y).Eq(c.IntVal(2)))
 
@@ -224,9 +224,9 @@ y = 11
 x := c.IntVar("x")
 y := c.IntVar("y")
 
+// 制約条件
 // x + y = 24
 c.Assert(x.Add(y).Eq(c.IntVal(24)))
-
 // x - y = 2
 c.Assert(x.Sub(y).Eq(c.IntVal(2)))
 
@@ -278,9 +278,9 @@ SMT Solver の利用者としては、こういうどうでもいいことはな
 x := IntVar("x")
 y := IntVar("y")
 
+// 制約条件
 // x + y = 24
 Assert(x.Add(y).Eq(IntVal(24)))
-
 // x - y = 2
 Assert(x.Sub(y).Eq(IntVal(2)))
 
@@ -363,7 +363,7 @@ rm $filename
 // 制約変数
 var x, y Int
 
-// 制約条件の式
+// 制約条件
 Assert(x + y == 24)
 Assert(x - y == 2)
 
