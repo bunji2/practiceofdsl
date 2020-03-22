@@ -237,9 +237,23 @@ c.Assert(x.Sub(y).Eq(c.IntVal(2)))
 c.Solve("x", "y")
 ```
 
-かなり見通しがよくなった。
+差分を示す。
 
-golang 特有のパッケージ宣言やインポート宣言や main 関数の宣言は、次のような実行用シェルスクリプト run.sh で補完する。
+![fig05](fig05.png)
+
+実行には次のように専用のシェルスクリプトを使う。
+
+```
+% run.sh sample2.txt
+x = 13
+y = 11
+```
+
+処理は次のようになっている。
+
+![fig06](fig06.png)
+
+このシェルスクリプト run.sh の中で golang 特有のパッケージ宣言やインポート宣言や main 関数の宣言を補完する。
 
 ```
 #!/bin/sh
@@ -260,16 +274,10 @@ go run $filename lib.go
 rm $filename
 ```
 
-実行例は次のようになる。
-
-```
-% run.sh sample2.txt
-x = 13
-y = 11
-```
-
-差分テキスト化することにより、各関数のプレフィクスの "c." がもはや意味をなさなくなってしまった。
+かなり見通しがよくなった。しかし、差分テキスト化することにより、各関数のプレフィクスの "c." がもはや意味をなさなくなってしまった。
 無駄なのでなくしてしまいたい。
+
+![fig07](fig07.png)
 
 ----
 
@@ -292,7 +300,42 @@ Assert(x.Sub(y).Eq(IntVal(2)))
 Solve("x", "y")
 ```
 
-新たにライブラリ lib2.go を追加し、コンテクストオブジェクトのグローバル化を行なった。
+差分を示す。
+
+![fig08](fig08.png)
+
+処理の流れは次の通り。
+
+![fig09](fig09.png)
+
+実行例は次のようになる。
+
+```
+% run.sh sample3.txt
+```
+
+実行用シェルスクリプト run.sh は次のようになる。
+
+```
+#!/bin/sh
+
+filename=`basename $1 .txt`$$.go
+
+(
+    echo "package main"
+    echo "func main() {"
+    echo "ccc = NewContext()"
+    echo "defer ccc.Close()"
+    cat $1
+    echo "}"
+) > $filename
+
+go run $filename lib.go lib2.go
+
+rm $filename
+```
+
+ライブラリ lib2.go を追加し、コンテクストオブジェクトのグローバル化を行なった。
 
 ```
 package main
@@ -324,33 +367,6 @@ func Solve(names ...string) {
 }
 ```
 
-実行用シェルスクリプト run.sh は次のようになる。
-
-```
-#!/bin/sh
-
-filename=`basename $1 .txt`$$.go
-
-(
-    echo "package main"
-    echo "func main() {"
-    echo "ccc = NewContext()"
-    echo "defer ccc.Close()"
-    cat $1
-    echo "}"
-) > $filename
-
-go run $filename lib.go lib2.go
-
-rm $filename
-```
-
-実行例は次のようになる。
-
-```
-% run.sh sample3.txt
-```
-
 ここまででだいぶ見通しはよくなったし、記述量も低減された。
 
 しかしそれでも、制約条件が直感的ではない。
@@ -358,6 +374,8 @@ rm $filename
 ここは「数学的な条件式」で表現したい。
 
 この他、制約変数で使っている文字列表記は冗長なので単純化したい。
+
+![fig10](fig10.png)
 
 ----
 
@@ -377,22 +395,31 @@ Assert(x - y == 2)
 Solve(x, y)
 ```
 
-ここまでくるとライブラリ化や差分テキスト化だけでは対応できず、「黒魔術」を使うしかない。
+コードの差分を示す。
 
-go/ast パッケージを使用し、AST を加工することで問題解決する。
+![fig11](fig11.png)
+
+ここまでくるとライブラリ化や差分テキスト化だけでは対応できないのであえて後回しにしてきた。
+もはや「黒魔術」を使うしかない。
+
+go/ast パッケージを使用し、AST を加工することで問題解決することになる。
 
 AST とは Abstract Syntax Tree の略であり、日本語では「抽象構文木」と呼ばれる。
 やや端折って簡単に言い切ってしまうと、ソースコードの構文に対応する木構造のことである。
 
 今回は Assert 関数の引数の制約条件式の AST を取得し変換する。
 
-|変換前|変換後|
-|:-----|:----|
-|Assert(x + y == 24)|Assert(x.Add(y).Eq(IntVal(24)))|
+処理の流れを示す。
 
-それぞれの AST を図示すると次のようになる。左の木を右の木に変換する。
+
+![fig12](fig12.png)
+
+
+制約条件式の変換の前後を木構造で示すと次のようになる。
 
 ![fig1](fig1.png)
+
+左の木を右の木に変換する。なお、図で同じ色の箇所は前後で対応する箇所である。
 
 AST は go/parser パッケージにより取得する。
 
