@@ -33,7 +33,7 @@ SMT Solver 向けの DSL を考えるにあたって次の様な基本方針と�
 
 ## ステップ0. 最初のサンプルコード
 
-SMT Solver とは Satisfiable Modulo Theories Solver の略で、一階述語論理式の充足可能性を判定してくれるシステムである。
+SMT Solver とは Satisfiable Modulo Theories Solver の略で、一階述語論理式で記述された制約条件を満たす値を解決してくれるシステムである。
 
 例題として、次のような条件式を満たす整数 x と y の解決を例とする。
 
