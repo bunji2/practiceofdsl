@@ -94,7 +94,7 @@ y = 11
 
 実行結果に、制約条件を満たす整数 x と y の値が表示される。
 
-実際はこの例題のような一次方程式を解くだけの単純なものだけでなく、もっと複雑な制約条件を扱うわけだが、今回は省略する。
+実際はこの例題のような一次方程式を解くような単純なものだけでなく、もっと複雑な制約条件を扱うわけだが、今回は省略する。
 
 さて、利用者の立場で考えてみると、上のサンプルコードのうち SMT Solver に渡す制約条件の記述については興味はあるが、専門外のライブラリのインポート・コンテクストやソルバーの作成・制約変数の定義など、SMT Solver を動かすためのコードの記述は意味不明であり、煩わしいだけだ。
 
@@ -151,7 +151,13 @@ y = 11
 ![fig03](fig03.png)
 
 
-用意したライブラリ lib.go は下の通りである。
+作成したライブラリ lib.go のポイントは下の通りである。
+
+* z3 のコンテクストやソルバーをメンバーとしてもつ構造体型 Context 型の導入する。
+* Context 型のメソッドとして、変数定義などのサンプルコードで使用する関数を保持する。
+* go-z3 への依存性をすべて lib.go に寄せることにより、サンプルコードからの go-z3 のインポートを不要にする。
+
+実装例は次の通りである。
 
 ```golang
 package main
@@ -224,10 +230,9 @@ func (c Context) Solve(names ...string) {
 }
 ```
 
-z3 のコンテクストやソルバーをまとめ、変数定義など、サンプルコードの中で使用する関数をすべて束ね、そして go-z3 との依存性をすべてライブラリに寄せることにより、サンプルコードからの go-z3 のインポートを不要にする。
 
-ライブラリ化によって記述量が減少した。
-しかしそれでも golang 特有のパッケージ宣言や main 関数の宣言など、毎回同じ内容を記述するのは無駄が多い。なくしてしまいたい。
+ステップ1 はステップ0 よりも、ライブラリ化によって利用者が記述するコード量は減少する。
+しかしそれでも golang 特有のパッケージ宣言や main 関数の宣言など、毎回同じ内容を記述するのは無駄が多いのでなくしてしまいたい。
 
 ![fig04](fig04.png)
 
@@ -235,7 +240,7 @@ z3 のコンテクストやソルバーをまとめ、変数定義など、サ�
 
 ## ステップ2. 差分テキスト化
 
-サンプルコード sample2.txt を示す。
+ステップ2 のサンプルコード sample2.txt を示す。
 
 ```
 // 制約変数
@@ -256,7 +261,7 @@ c.Solve("x", "y")
 
 ![fig05](fig05.png)
 
-実行には次のように専用のシェルスクリプトを使う。
+実行には専用のシェルスクリプトを使う。
 
 ```
 % run.sh sample2.txt
@@ -289,10 +294,10 @@ go run $filename lib.go
 rm $filename
 ```
 
-見通しがよくなり、記述量が減少した。
+ステップ1 では差分テキスト化することにより、golang 特有のパッケージ宣言や main 関数の宣言などがなくなり、利用者の記述量はさらに減少した。
 
-しかし、差分テキスト化することにより、各関数のプレフィクスの "c." がもはや意味をなさなくなってしまった。
-無駄なのでなくしてしまいたい。
+しかし差分テキスト化の副作用として、各関数のプレフィクスの "c." がもはや意味をなさなくなってしまった。
+無駄なのでこれをなくしてしまいたい。
 
 ![fig07](fig07.png)
 
@@ -300,7 +305,7 @@ rm $filename
 
 ## ステップ3. ライブラリ化その２
 
-サンプルコード sample3.txt を示す。
+ステップ3 のサンプルコード sample3.txt を示す。
 
 ```
 // 制約変数
@@ -352,7 +357,7 @@ go run $filename lib.go lib2.go
 rm $filename
 ```
 
-ライブラリ lib2.go を追加し、コンテクストオブジェクトのグローバル化を行なった。
+ライブラリ lib2.go を追加し、コンテクスト変数のグローバル化を行なった。
 
 ```
 package main
@@ -386,9 +391,9 @@ func Solve(names ...string) {
 
 なお、上の変数のグローバル化により追加ライブラリは「main パッケージ限定」となってしまい、github などへの外出しの道は絶たれてしまったことに注意。
 
-コードの方はだいぶ見通しはよくなったし、記述量も低減された。
+ステップ2 と比べ無駄な "c." プレフィクスがなくなって、利用者の記述量はまた低減された。
 
-しかしそれでも、制約条件が直感的ではない。
+しかしそれでも、制約条件が直感的ではないという問題が残っている。
 
 利用者としては「数学的な条件式」を使いたい。
 
@@ -400,7 +405,7 @@ func Solve(names ...string) {
 
 ## ステップ4. 制約条件の数式化
 
-サンプルコード sample4.txt を示す。
+ステップ4 のサンプルコード sample4.txt を示す。
 
 ```golang
 // 制約変数
@@ -418,16 +423,15 @@ Solve(x, y)
 
 ![fig11](fig11.png)
 
-上のような変化は、ライブラリ化や差分テキスト化だけでは対応できないのであえて後回しにしてきた。
+上のような変化をもたらすには、Assert 関数の引数の式の構造を自動的に変換する必要があるが、
+ライブラリ化や差分テキスト化だけでは対応できない。
 
-ここでは「黒魔術」を使うことになる。つまり、go/ast パッケージを使用し、AST を加工することで対処することになる。
+今回は Assert 関数の引数の式の "AST" を加工することで対処することにした。
 
-AST とは Abstract Syntax Tree の略であり、日本語では「抽象構文木」と呼ばれる。
+"AST" とは "Abstract Syntax Tree" の略であり、日本語では「抽象構文木」と呼ばれる。
 やや端折って簡単に言い切ってしまうと、ソースコードの構文に対応する木構造のことである。
 
-今回は Assert 関数の引数の制約条件式の AST を取得し変換する。
-
-処理の流れを示す。
+まず全体の処理の流れを示す。
 
 ![fig12](fig12.png)
 
@@ -451,18 +455,17 @@ conv コマンドの中で行っている、制約条件式の変換の前後を
 
 左の木を右の木に変換する。なお、図で同じ色の箇所は前後で対応する箇所である。
 
-AST は go/parser パッケージにより取得する。
+AST は go の標準パッケージである go/parser パッケージにより取得する。
 
+以下、関連する箇所のコードを抜粋する。
 
-該当箇所を抜粋する。
-
-パージング
+### 差分テキストの結合処理とパージング処理
 
 ```golang
-// 差分ファイルの読み出し
+// 入力コードの読み出し
 src := readSrc(os.Args[1])
 
-// 入力の前後に文字列を追加
+// 差分テキスト処理。ここでは入力コードの前後に文字列を追加
 src = `package main
 func main() {
 ccc = NewContext()
@@ -472,11 +475,9 @@ defer ccc.Close()` + src + "}"
 fileNode, err := parser.ParseFile(fset, "", src, 0)
 ```
 
-AST の書き換え
+### AST の書き換え
 
 ```golang
-// "main" 関数のステートメントリストの取得
-stmts := pickupMainStmts(fileNode)
 
 // 各ステートメントの処理
 for i, stmt := range stmts {
@@ -491,31 +492,39 @@ for i, stmt := range stmts {
 			ce.Args[0] = convExpr(ce.Args[0])
 ```
 
-式のASTの変換は再帰的に行なう。
+各ステートメントの中から Assert 関数のステートメントをみつけ、対象となる式をみつけ変換を行う。
+
+
+## 式のASTの変換
 
 ```golang
 // convExpr は Assert 関数の引数で指定された式のASTを変換する関数
 func convExpr(expr ast.Expr) (r ast.Expr) {
 	switch expr.(type) {
 	case *ast.BinaryExpr:
-		r = convBinaryExpr(expr.(*ast.BinaryExpr))
+		r = convBinaryExpr(expr.(*ast.BinaryExpr))	// 二項演算式の変換
 	case *ast.UnaryExpr:
-		r = convUnaryExpr(expr.(*ast.UnaryExpr))
+		r = convUnaryExpr(expr.(*ast.UnaryExpr))	// 単項演算式の変換
 	case *ast.CallExpr:
-		r = convCallExpr(expr.(*ast.CallExpr))
+		r = convCallExpr(expr.(*ast.CallExpr))		// 関数呼び出し式の変換
 	case *ast.ParenExpr:
-		r = convExpr(expr.(*ast.ParenExpr).X)
+		r = convExpr(expr.(*ast.ParenExpr).X)		// 括弧で囲まれた式の変換
 	case *ast.Ident:
-		r = convIdent(expr.(*ast.Ident))
+		r = convIdent(expr.(*ast.Ident))		// 識別子からなる式の変換
 	case *ast.BasicLit:
-		r = convBasicLit(expr.(*ast.BasicLit))
+		r = convBasicLit(expr.(*ast.BasicLit))		// 整数などのリテラルからなる式の変換
 	default:
 		// 上記以外は変換しない。
 		r = expr
 	}
 	return
 }
+```
 
+「式」には、二項演算子式、単項演算子式、関数呼び出し、などなど、複数のケースがあるため、
+それぞれに応じた分岐を行なって変換していく。
+
+```golang
 // convUnaryExpr は単行演算式を変換する関数
 func convUnaryExpr(expr *ast.UnaryExpr) (r ast.Expr) {
 	if expr.Op != token.NOT {
@@ -524,7 +533,7 @@ func convUnaryExpr(expr *ast.UnaryExpr) (r ast.Expr) {
 	}
 	r = &ast.CallExpr{
 		Fun: &ast.SelectorExpr{
-			X:   expr.X,
+			X:   convExpr(expr.X), // NOT演算子の引数の変換
 			Sel: ast.NewIdent("Not"),
 		},
 	}
@@ -532,7 +541,12 @@ func convUnaryExpr(expr *ast.UnaryExpr) (r ast.Expr) {
 }
 ```
 
-その他、次の変換も行っている。
+式は再帰的な構造をしているため、演算子の引数となる式もまた再帰的に変換を行う必要がある。
+
+
+### その他
+
+次のような変数宣言の変換も行なう。
 
 |変換前|変換後|
 |:-----|:----|
