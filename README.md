@@ -1,6 +1,6 @@
 # Practice of DSL
 
-ここでは、DSL をデザインしてみた際のメモを記していく。
+ここでは、DSL をデザインした際のメモを記していく。
 
 ----
 
@@ -134,7 +134,7 @@ func main() {
 }
 ```
 
-前回のコードとの比較を示す。
+前回のコードからの変更を示す。
 
 ![fig02.png](fig02.png)
 
@@ -151,84 +151,11 @@ y = 11
 ![fig03](fig03.png)
 
 
-作成したライブラリ lib.go のポイントは下の通りである。
+作成したライブラリ [lib.go](lib.go) のポイントは下の通りである。
 
 * z3 のコンテクストやソルバーをメンバーとしてもつ構造体型 Context 型の導入する。
 * Context 型のメソッドとして、変数定義などのサンプルコードで使用する関数を保持する。
 * go-z3 への依存性をすべて lib.go に寄せることにより、サンプルコードからの go-z3 のインポートを不要にする。
-
-実装例は次の通りである。
-
-```golang
-package main
-
-import (
-	"fmt"
-	"github.com/mitchellh/go-z3"
-)
-
-// Context は z3 のコンテクストを保持するデータ型
-type Context struct {
-	ctx    *z3.Context
-	solver *z3.Solver
-}
-
-// NewContext は新しいコンテクストを生成する関数
-func NewContext() Context {
-	// コンテクストの作成
-	config := z3.NewConfig()
-	ctx := z3.NewContext(config)
-	config.Close()
-	return Context{
-		ctx:    ctx,
-		solver: ctx.NewSolver(),
-	}
-}
-
-// Close はコンテクストをクローズする関数
-func (c Context) Close() {
-	if c.solver != nil {
-		c.solver.Close()
-	}
-	if c.ctx != nil {
-		c.ctx.Close()
-	}
-}
-
-// IntVar は整数型の制約変数のASTノードを作成する関数
-func (c Context) IntVar(name string) *z3.AST {
-	return c.ctx.Const(c.ctx.Symbol(name), c.ctx.IntSort())
-}
-
-// IntVal は整数値のASTノードを作成する関数
-func (c Context) IntVal(value int) *z3.AST {
-	return c.ctx.Int(value, c.ctx.IntSort())
-}
-
-// Assert は制約条件を宣言する関数
-func (c Context) Assert(cond *z3.AST) {
-	c.solver.Assert(cond)
-}
-
-// Solve は制約を解決する変数の値を表示する関数
-func (c Context) Solve(names ...string) {
-	// 解決可能かどうかを調べる
-	if v := c.solver.Check(); v != z3.True {
-		fmt.Println("unsolvable")
-		return
-	}
-
-	// 制約を満たす値の取得
-	m := c.solver.Model()
-	values := m.Assignments()
-	m.Close()
-
-	// 可変引数で指定された変数名の値を表示
-	for _, name := range names {
-		fmt.Printf("%s = %s\n", name, values[name])
-	}
-}
-```
 
 
 ステップ1 はステップ0 よりも、ライブラリ化によって利用者が記述するコード量は減少する。
@@ -257,7 +184,7 @@ c.Assert(x.Sub(y).Eq(c.IntVal(2)))
 c.Solve("x", "y")
 ```
 
-前回のコードとの変化内容を示す。
+前回のコードからの変更を示す。
 
 ![fig05](fig05.png)
 
@@ -322,7 +249,7 @@ Assert(x.Sub(y).Eq(IntVal(2)))
 Solve("x", "y")
 ```
 
-前回のコードとの変化内容を示す。
+前回のコードからの変更を示す。
 
 ![fig08](fig08.png)
 
@@ -357,39 +284,7 @@ go run $filename lib.go lib2.go
 rm $filename
 ```
 
-ライブラリ lib2.go を追加し、コンテクスト変数のグローバル化を行なった。
-
-```
-package main
-import (
-	"github.com/mitchellh/go-z3"
-)
-
-// グローバル変数
-var ccc Context
-
-// IntVar は整数型の制約変数を作成する関数
-func IntVar(name string) *z3.AST {
-	return ccc.IntVar(name)
-}
-
-// IntVal は整数値を作成する関数
-func IntVal(value int) *z3.AST {
-	return ccc.IntVal(value)
-}
-
-// Assert は制約条件を宣言する関数
-func Assert(cond *z3.AST) {
-	ccc.Assert(cond)
-}
-
-// Solve は制約を解決する変数の値を表示する関数
-func Solve(names ...string) {
-	ccc.Solve(names...)
-}
-```
-
-なお、上の変数のグローバル化により追加ライブラリは「main パッケージ限定」となってしまい、github などへの外出しの道は絶たれてしまったことに注意。
+コンテクスト変数のグローバル化を行なため、ライブラリ [lib2.go](lib2.go) を追加した。
 
 ステップ2 と比べ無駄な "c." プレフィクスがなくなって、利用者の記述量はまた低減された。
 
@@ -419,7 +314,7 @@ Assert(x - y == 2)
 Solve(x, y)
 ```
 
-前回のコードとの変化内容を示す。
+前回のコードからの変更を示す。
 
 ![fig11](fig11.png)
 
@@ -449,23 +344,23 @@ go run $filename lib.go lib2.go
 rm $filename
 ```
 
-conv コマンドの中で行っている、制約条件式の変換の前後を木構造で示すと次のようになる。
+conv コマンドの中で行っている、制約条件式の AST の変換は次のような木構造の変換となる。
 
 ![fig1](fig1.png)
 
-左の木を右の木に変換する。なお、図で同じ色の箇所は前後で対応する箇所である。
+図で同じ色の箇所は前後で対応する箇所である。
 
 AST は go の標準パッケージである go/parser パッケージにより取得する。
 
 以下、関連する箇所のコードを抜粋する。
 
-### 差分テキストの結合処理とパージング処理
+### 差分テキストの補完処理とパージング処理
 
 ```golang
 // 入力コードの読み出し
 src := readSrc(os.Args[1])
 
-// 差分テキスト処理。ここでは入力コードの前後に文字列を追加
+// 差分テキストの補完処理。入力コードの前後に補完コードをコンカテネーション
 src = `package main
 func main() {
 ccc = NewContext()
@@ -475,7 +370,7 @@ defer ccc.Close()` + src + "}"
 fileNode, err := parser.ParseFile(fset, "", src, 0)
 ```
 
-### AST の書き換え
+### 変換箇所の特定
 
 ```golang
 
@@ -492,7 +387,7 @@ for i, stmt := range stmts {
 			ce.Args[0] = convExpr(ce.Args[0])
 ```
 
-各ステートメントの中から Assert 関数のステートメントをみつけ、対象となる式をみつけ変換を行う。
+各ステートメントの中から Assert 関数のステートメントをみつけ、変換の対象となる式をみつける。
 
 
 ## 式のASTの変換
@@ -521,8 +416,8 @@ func convExpr(expr ast.Expr) (r ast.Expr) {
 }
 ```
 
-「式」には、二項演算子式、単項演算子式、関数呼び出し、などなど、複数のケースがあるため、
-それぞれに応じた分岐を行なって変換していく。
+「式」には、二項演算式、単項演算式、関数呼び出し、などなど、複数のケースがあるため、
+それぞれのケースに応じて分岐していく。
 
 ```golang
 // convUnaryExpr は単行演算式を変換する関数
@@ -533,7 +428,7 @@ func convUnaryExpr(expr *ast.UnaryExpr) (r ast.Expr) {
 	}
 	r = &ast.CallExpr{
 		Fun: &ast.SelectorExpr{
-			X:   convExpr(expr.X), // NOT演算子の引数の変換
+			X:   convExpr(expr.X), // NOT演算子の引数の変換（再帰的な変換）
 			Sel: ast.NewIdent("Not"),
 		},
 	}
