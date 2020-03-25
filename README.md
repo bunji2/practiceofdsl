@@ -70,12 +70,13 @@ func main() {
 	// x - y = 2
 	solver.Assert(x.Sub(y).Eq(ctx.Int(2, ctx.IntSort())))
 
+	// 解決可能化チェック
 	if v := solver.Check(); v != z3.True {
 		fmt.Println("解決不能")
 		return
 	}
 
-	// Get the resulting model:
+	// 結果の表示
 	m := solver.Model()
 	values := m.Assignments()
 	m.Close()
