@@ -12,7 +12,7 @@ DSL とは Domain Specific Language の略であり日本語では「ドメイ�
 
 ここでは、SMT Solver を使うための DSL を考える。
 
-なお、以下では [Z3](https://github.com/Z3Prover/z3) の golang フロントエンドである [go-z3](https://github.com/mitchellh/go-z3) を使うが、そのためのインストール手順などについては go-z3 のサイトを参照いただきたい。
+なお、以下では [Z3](https://github.com/Z3Prover/z3) の golang フロントエンドである [go-z3](https://github.com/mitchellh/go-z3) を使うが、Z3 や go-z3 のインストール手順などについてはそれぞれののサイトを参照いただきたい。
 
 ## 基本方針
 
