@@ -12,6 +12,8 @@ DSL とは Domain Specific Language の略であり日本語では「ドメイ�
 
 ここでは、SMT Solver を使うための DSL を考える。
 
+なお、以下では [Z3](https://github.com/Z3Prover/z3) の golang フロントエンドである [go-z3](https://github.com/mitchellh/go-z3) を使うが、そのためのインストール手順などについては go-z3 のサイトを参照いただきたい。
+
 ## 基本方針
 
 SMT Solver 向けの DSL を考えるにあたって次の方針とする。
@@ -38,7 +40,7 @@ SMT Solver 向けの DSL を考えるにあたって次の方針とする。
 
 SMT Solver とは Satisfiable Modulo Theories Solver の略で、一階述語論理式で記述された制約条件を満たす値を解決してくれるシステムである。
 
-例題として、次のような条件式を満たす整数 x と y の解決を例とする。
+例題として、次のような条件式を満たす整数 x と y の解決を考える。
 
 ![](https://latex.codecogs.com/gif.latex?x&plus;y=24\wedge{x-y=2})
 
