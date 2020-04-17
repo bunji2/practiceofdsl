@@ -504,3 +504,79 @@ Solve("x", "y")|
  - 配列を扱えない、
  - Z3 の API をすべて実装していない、など
 * 別の SMT Solver のパッケージへの移行を検討中
+
+## サンプル
+
+今回デザインした DSL のサンプルを示す。
+
+### 虫食い計算
+
+google の入社試験を解いてみる。
+
+```
+// mushikui.txt
+
+//   WWWDOT
+// - GOOGLE
+// --------
+//   DOTCOM
+
+// 各アルファベットは整数
+var W, D, O, T, G, L, E, C, M Int
+
+// 各アルファベットは一意な数字
+Assert(Distinct(W, D, O, T, G, L, E, C, M))
+
+// 各アルファベットは一桁の整数（0以上10未満）
+// かつ、先頭の W, G, D は 0 以外
+Assert(W>=1 && W<10)
+Assert(D>=1 && D<10)
+Assert(O>=0 && O<10)
+Assert(T>=0 && T<10)
+Assert(G>=1 && G<10)
+Assert(L>=0 && L<10)
+Assert(E>=0 && E<10)
+Assert(C>=0 && C<10)
+Assert(M>=0 && M<10)
+
+// ボロウ b1～b5 は筆算で上の位から借りてくる値
+//   W  W  W  D  O  T
+//   b5 b4 b3 b2 b1
+// - G  O  O  G  L  E
+// --------------
+//   D  O  T  C  O  M
+
+var b1, b2, b3, b4, b5 Int
+
+// ボロウは 0 または 1
+Assert(b1 == 0 || b1 == 1)
+Assert(b2 == 0 || b2 == 1)
+Assert(b3 == 0 || b3 == 1)
+Assert(b4 == 0 || b4 == 1)
+Assert(b5 == 0 || b5 == 1)
+
+// 筆算（各桁ごとの関係）
+Assert(T + b1*10 -E     == M)
+Assert(O + b2*10 -L -b1 == O)
+Assert(D + b3*10 -G -b2 == C)
+Assert(W + b4*10 -O -b3 == T)
+Assert(W + b5*10 -O -b4 == O)
+Assert(W         -G -b5 == D)
+
+Solve(W, D, O, T, G, L, E, C, M)
+```
+
+実行結果。
+
+```
+C:\work>sh run.sh mushikui.txt
+W = 7.
+D = 5.
+O = 8.
+T = 9.
+G = 1.
+L = 0.
+E = 3.
+C = 4.
+M = 6.
+```
