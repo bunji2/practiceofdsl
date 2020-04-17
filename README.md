@@ -466,7 +466,7 @@ func convUnaryExpr(expr *ast.UnaryExpr) (r ast.Expr) {
 // 変換前
 var x, y Int
 // 変換後
-x, y := IntVar("x"), IntVar("y")|
+x, y := IntVar("x"), IntVar("y")
 ```
 
 変換前後の AST を示す。
