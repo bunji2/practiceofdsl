@@ -337,7 +337,7 @@ Solve(x, y)
 
 AST の例を以下に示す。
 
-![fig1](fig1.png)
+![AST](fig/fig_ast.png)
 
 
 シェルスクリプト run.sh 內部の処理を示す。
