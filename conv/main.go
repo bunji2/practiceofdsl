@@ -9,6 +9,8 @@ import (
 	"go/token"
 	"io/ioutil"
 	"os"
+	"strconv"
+	"strings"
 )
 
 func main() {
@@ -59,6 +61,65 @@ defer ccc.Close()
 	// 変換対象とし、main 以外の他の関数は対象外とした。
 	// この仕様を変更する場合は上の行を含めて全体の見直しが必要となる。
 
+	convStmts(stmts)
+
+	/*
+		// 各ステートメントの処理
+		for i, stmt := range stmts {
+			switch stmt.(type) {
+			case *ast.DeclStmt: // 宣言のステートメント
+				ds := stmt.(*ast.DeclStmt)
+
+				// 変数の定義か確認
+				names, typ, ok := isVarDecl(ds.Decl)
+				if !ok {
+					// 変数の定義でない場合はなにもしない
+					break
+				}
+				// ステートメントを書き換え
+				stmts[i] = makeASTVarDecl(names, typ)
+
+			case *ast.ExprStmt: // 式のステートメント
+				es := stmt.(*ast.ExprStmt)
+
+				if isAssert(es.X) {
+					// Assert 関数のとき
+					ce := es.X.(*ast.CallExpr)
+					// 第一引数を変換
+					ce.Args[0] = convExpr(ce.Args[0])
+
+				} else if isSolve(es.X) {
+					// Solve 関数のとき
+					ce := es.X.(*ast.CallExpr)
+					var args []ast.Expr
+					// Solve 関数の引数で指定された Ident を文字列に変換
+					for _, arg := range ce.Args {
+						ident := arg.(*ast.Ident)
+						args = append(args, &ast.BasicLit{
+							Kind:  token.STRING,
+							Value: "\"" + ident.Name + "\"",
+						})
+					}
+					// Solve 関数の引数を書き換え
+					ce.Args = args
+				}
+			default:
+				// ignore
+			}
+		}
+	*/
+
+	// ASTをファイルに保存
+	err = saveSrc(os.Args[2], f)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 3
+	}
+
+	return 0
+}
+
+func convStmts(stmts []ast.Stmt) {
 	// 各ステートメントの処理
 	for i, stmt := range stmts {
 		switch stmt.(type) {
@@ -98,19 +159,32 @@ defer ccc.Close()
 				// Solve 関数の引数を書き換え
 				ce.Args = args
 			}
+		case *ast.ForStmt:
+			fs := stmt.(*ast.ForStmt)
+			if fs.Body != nil {
+				convStmts(fs.Body.List)
+			}
+		case *ast.RangeStmt:
+			rs := stmt.(*ast.RangeStmt)
+			if rs.Body != nil {
+				convStmts(rs.Body.List)
+			}
+		case *ast.IfStmt:
+			is := stmt.(*ast.IfStmt)
+			if is.Body != nil {
+				convStmts([]ast.Stmt{is.Body})
+			}
+			if is.Else != nil {
+				convStmts([]ast.Stmt{is.Else})
+			}
+		case *ast.BlockStmt:
+			bs := stmt.(*ast.BlockStmt)
+			convStmts(bs.List)
 		default:
 			// ignore
 		}
 	}
 
-	// ASTをファイルに保存
-	err = saveSrc(os.Args[2], f)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 3
-	}
-
-	return 0
 }
 
 // isVarDecl は与えられた AST が変数宣言かどうかをチェックする関数。
@@ -123,12 +197,13 @@ func isVarDecl(decl ast.Decl) (names []string, typ string, ok bool) {
 	if !ok {
 		return
 	}
+	ok = false
 
 	// token.VAR か？
 	if gd.Tok != token.VAR {
-		ok = false
 		return
 	}
+
 	var vs *ast.ValueSpec
 
 	// ValueSpec か？
@@ -136,26 +211,72 @@ func isVarDecl(decl ast.Decl) (names []string, typ string, ok bool) {
 	if !ok {
 		return
 	}
+	ok = false
 
-	var tmp *ast.Ident
+	// vs.Type は Ident もしくは ArrayType か？
+	switch vs.Type.(type) {
+	case *ast.Ident:
+		tmp := vs.Type.(*ast.Ident)
 
-	// vs.Type は Ident か？
-	tmp, ok = vs.Type.(*ast.Ident)
-	if !ok {
-		return
-	}
+		// Int, Num, Bool のいずれか？
+		switch tmp.Name {
+		case "Int":
+		case "Num":
+		case "Bool":
+		default:
+			// 上記以外
+			return
+		}
+		typ = tmp.Name
 
-	// Int, Num, Bool のいずれか？
-	if tmp.Name != "Int" && tmp.Name != "Num" && tmp.Name != "Bool" {
+	case *ast.ArrayType:
+		tmp := vs.Type.(*ast.ArrayType)
+		var elt *ast.Ident
+		elt, ok = tmp.Elt.(*ast.Ident)
+		if !ok {
+			// struct などは対象外
+			return
+		}
 		ok = false
+
+		// Int, Num, Bool のいずれか？
+		switch elt.Name {
+		case "Int":
+		case "Num":
+		case "Bool":
+		default:
+			// 上記以外
+			return
+		}
+
+		var len *ast.BasicLit
+		len, ok = tmp.Len.(*ast.BasicLit)
+		if !ok {
+			return
+		}
+		ok = false
+
+		// [XXX] ↑ BasicLit 固定に注意。つまり、配列宣言の要素数は固定。
+		// var xs [5]Int // これは OK
+		//
+		// 次のような要素数を変数にするような場合はランタイムエラーとなる。
+		// n := 5
+		// var xs [n]Int // これは NG
+
+		typ = elt.Name + "_" + len.Value
+		// {Int,Num,Bool}_要素数
+
+	default:
+		// 上記以外
 		return
 	}
 
 	// 定義されている名前をリスト化
-	typ = tmp.Name
 	for _, ident := range vs.Names {
 		names = append(names, ident.Name)
 	}
+
+	ok = true
 	return
 }
 
@@ -163,6 +284,14 @@ func isVarDecl(decl ast.Decl) (names []string, typ string, ok bool) {
 func makeASTVarDecl(names []string, typ string) ast.Stmt {
 	// Before: var x, y Int
 	// After:  x, y := IntVar("x"), IntVar("y")
+
+	typs := strings.Split(typ, "_")
+	if len(typs) > 1 {
+		// "typ_num" の場合は、配列型となる
+		num, _ := strconv.Atoi(typs[1])
+		return makeASTVarArrayDecl(names, typs[0], num)
+	}
+
 	n0 := ast.NewIdent(typ + "Var")
 	var n1, n3 []ast.Expr
 	for _, name := range names {
@@ -172,6 +301,20 @@ func makeASTVarDecl(names []string, typ string) ast.Stmt {
 	}
 	n4 := &ast.AssignStmt{Lhs: n1, Tok: token.DEFINE, Rhs: n3}
 	return n4
+}
+
+// makeASTVarArrayDecl は配列の制約変数を定義するASTを生成する関数
+func makeASTVarArrayDecl(names []string, typ string, num int) ast.Stmt {
+	n0 := ast.NewIdent(typ + "ArrayVar")
+	n3 := &ast.BasicLit{Value: fmt.Sprintf("%d", num), Kind: token.INT}
+	var n1, n4 []ast.Expr
+	for _, name := range names {
+		n1 = append(n1, ast.NewIdent(name))
+		n2 := &ast.BasicLit{Value: fmt.Sprintf("\"%s\"", name), Kind: token.STRING}
+		n4 = append(n4, &ast.CallExpr{Fun: n0, Args: []ast.Expr{n2, n3}})
+	}
+	n5 := &ast.AssignStmt{Lhs: n1, Tok: token.DEFINE, Rhs: n4}
+	return n5
 }
 
 // convExpr は Assert 関数の引数で指定された式のASTを変換する関数
@@ -341,16 +484,17 @@ func convCallExpr(expr *ast.CallExpr) (r ast.Expr) {
 		switch se.Sel.Name {
 		case "Implies":
 		case "Iff":
+		case "Ite":
 		case "Pow":
 		default:
-			// Implies と Iff と Pow 以外は変換せずリターン
+			// 上記以外は変換せずリターン
 			r = expr
 			return
 		}
 		r = &ast.CallExpr{
 			Fun: &ast.SelectorExpr{
 				X:   convExpr(se.X),
-				Sel: se.Sel, // Implies, Iff, or Pow
+				Sel: se.Sel, // Implies, Iff, Ite, or Pow
 			},
 			Args: args,
 		}
@@ -418,10 +562,9 @@ func convIdent(expr *ast.Ident) (r ast.Expr) {
 		return
 		// [XXX]
 		// Assert 関数の式の中に現れる識別子が制約変数ではない変数が
-		// 現れるケースを想定していない。
-		// 正しくはエラーにした方がいいかもしれない。
-		// やるとすれば、制約変数の宣言時に制約変数名のリストを用意しておいて、
-		// それに含まれるかどうかを convIdent でチェックする感じ。
+		// 現れるケースを想定していないが問題があるかもしれない。そうでないかもしれない。
+		// 制約変数の宣言の変換を行う際に制約変数名のリストを作成し、
+		// それに含まれるかどうかを convIdent でチェックすることも考えてみるべきかもしれない。
 	}
 
 	r = &ast.CallExpr{
