@@ -12,6 +12,10 @@ var xs, ys [2]Int
 xs, ys := IntArrayVar("xs", 2), IntArrayVar("ys", 2)
 ```
 
+変換前後の AST は下の通りです。
+
+![array ast](array.png)
+
 IntArrayVar は与えられた変数名・要素数の変数を宣言する関数である。
 
 ```golang
