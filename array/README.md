@@ -6,10 +6,10 @@ DSL の表現力を強化するため、配列への対応を行う。
 
 ```
 変換前：
-var xs, ys, zs [2]Int
+var xs, ys [2]Int
 
 変更後：
-xs, ys, zs := IntArrayVar("xs", 2), IntArrayVar("ys", 2), IntArrayVar("zs", 2)
+xs, ys := IntArrayVar("xs", 2), IntArrayVar("ys", 2)
 ```
 
 IntArrayVar は与えられた変数名・要素数の変数を宣言する関数である。
@@ -23,7 +23,11 @@ func IntArrayVar(name string, num int) (r []*z3.AST) {
 }
 ```
 
+したがって、等価コードは次のようになる。
 
+```
+xs, ys := []*z3.AST{IntVar("xs[0]"),IntVar("xs[1]")}, []*z3.AST{IntVar("ys[0]"),IntVar("ys[1]")}
+```
 
 ## サンプル
 
