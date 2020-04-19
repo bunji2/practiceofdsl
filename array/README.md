@@ -31,7 +31,7 @@ func IntArrayVar(name string, num int) (r []*z3.AST) {
 
 ### 数独
 
-![sudoku](fig/sudoku.png)
+![sudoku](sudoku.png)
 
 ```
 // 9x9 の数独
@@ -222,6 +222,8 @@ x[80] = 7
 
 
 ### Eight Queen
+
+![eight queen](8queen.png)
 
 ```
 // 8queen.txt
