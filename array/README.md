@@ -12,7 +12,7 @@ var xs, ys [2]Int
 xs, ys := IntArrayVar("xs", 2), IntArrayVar("ys", 2)
 ```
 
-変換前後の AST は下の通りです。
+変換前後の AST は下の通り。
 
 ![array ast](array.png)
 
