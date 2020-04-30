@@ -27,7 +27,15 @@ func IntArrayVar(name string, num int) (r []*z3.AST) {
 }
 ```
 
-したがって、等価コードは次のようになる。
+IntArrayVar("xs", 2) を実施すると、次のようになる。
+
+```
+IntArrayVar("xs", 2)
+↓
+[]*z3.AST{IntVar("xs[0]"),IntVar("xs[1]")}
+```
+
+したがって、冒頭の制約変数の配列宣言の等価コードは次のようになる。
 
 ```
 xs, ys := []*z3.AST{IntVar("xs[0]"),IntVar("xs[1]")}, []*z3.AST{IntVar("ys[0]"),IntVar("ys[1]")}
